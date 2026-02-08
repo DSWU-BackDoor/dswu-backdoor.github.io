@@ -9,4 +9,8 @@ import java.util.List;
 public interface ActivityItemRepository extends JpaRepository<ActivityItem, Long> {
 
     List<ActivityItem> findByYearAndCategoryOrderByOrderIndexAsc(Integer year, ActivityCategory category);
+
+    List<ActivityItem> findByYearOrderByOrderIndexAsc(Integer year);
+
+    List<ActivityItem> findAllByOrderByOrderIndexAsc();
 }

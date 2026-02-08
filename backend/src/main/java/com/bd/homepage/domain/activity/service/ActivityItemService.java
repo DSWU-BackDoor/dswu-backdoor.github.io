@@ -29,6 +29,24 @@ public class ActivityItemService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ActivityItemResponse> listByYear(Integer year) {
+        return activityItemRepository
+                .findByYearOrderByOrderIndexAsc(year)
+                .stream()
+                .map(ActivityItemResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ActivityItemResponse> listAll() {
+        return activityItemRepository
+                .findAllByOrderByOrderIndexAsc()
+                .stream()
+                .map(ActivityItemResponse::from)
+                .toList();
+    }
+
     public ActivityItemResponse create(ActivityItemRequest req) {
         ActivityItem saved = activityItemRepository.save(
                 ActivityItem.builder()
@@ -37,6 +55,8 @@ public class ActivityItemService {
                         .title(req.getTitle())
                         .href(req.getHref())
                         .image(req.getImage())
+                        .iconKey(req.getIconKey())
+                        .iconUrl(req.getIconUrl())
                         .orderIndex(req.getOrderIndex() == null ? 0 : req.getOrderIndex())
                         .isActive(req.getIsActive() == null ? true : req.getIsActive())
                         .build()
@@ -57,6 +77,8 @@ public class ActivityItemService {
                 req.getTitle(),
                 req.getHref(),
                 req.getImage(),
+                req.getIconKey(),
+                req.getIconUrl(),
                 req.getOrderIndex() == null ? item.getOrderIndex() : req.getOrderIndex(),
                 req.getIsActive() == null ? item.getIsActive() : req.getIsActive()
         );
