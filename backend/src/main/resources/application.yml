@@ -3,26 +3,21 @@ spring:
     exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
 
   datasource:
-    # MODE=MySQL 뒤에 DATABASE_TO_UPPER=FALSE 추가 (리눅스 서버 대소문자 대응)
     url: jdbc:h2:mem:localdb;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;DATABASE_TO_UPPER=FALSE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
     driver-class-name: org.h2.Driver
     username: sa
     password:
 
   jpa:
-    # 1. 인메모리 DB이므로 서버 뜰 때마다 테이블 생성을 보장하도록 create로 변경
     hibernate:
       ddl-auto: create 
-    # 2. 실제 어떤 쿼리로 테이블을 만드는지 로그로 확인
     show-sql: true
     properties:
       hibernate:
-        # 3. H2 DB 엔진 버전에 맞는 문법을 사용하도록 명시
         dialect: org.hibernate.dialect.H2Dialect
-        # 4. 엔티티의 필드명이 SQL 예약어(year 등)와 겹쳐서 테이블 생성이 무산되는 것 방지
-        globally_quoted_identifiers: true
+        globally_quoted_identifiers: false
+        auto_quote_keyword: true
         format_sql: true
-    # 5. DDL 생성을 명시적으로 활성화
     generate-ddl: true
 
   h2:
