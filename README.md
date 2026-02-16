@@ -1,92 +1,85 @@
-**BD HomePage**
 
-***전체 구조**
+# 🚪 BackDoor 홈페이지 운영 매뉴얼
 
-bd-home-template/
+### 1️⃣ 시스템 구조
 
-├─ backend/              # (자동 생성됨) Spring Boot 백엔드
+| 영역       | 설명                             |
+| -------- | ------------------------------ |
+| Backend  | Spring Boot (Fly.io 배포)        |
+| Frontend | 정적 HTML / JS (GitHub Pages 배포) |
+| CI/CD    | GitHub Actions 자동 배포           |
+| 인증       | JWT + BCrypt (환경변수 기반)         |
 
-├─ frontend/             # (자동 생성됨) 정적 HTML/JS 프론트
+### 2️⃣ 레포지토리 구조
 
-├─ scripts/              # 운영자용 bootstrap 스크립트
+```
+backend/              # API 서버 (Spring Boot)
+frontend/             # 정적 페이지 파일
+scripts/              # 초기 세팅용 (운영 중 사용 안 함)
+.github/workflows/    # GitHub Actions 배포 설정
+```
 
-├─ .github/workflows/    # CI/CD (Fly.io, GitHub Pages)
+### 3️⃣ 수정 및 배포 방법
 
-└─ README.md
+**① 코드 수정**
 
+필요한 파일 수정 후
+```bash
+git add .
+git commit -m "수정 내용 설명"
+git push
+```
 
+**② 배포 확인**
 
+GitHub → **Actions** 탭 확인
+* 프론트 배포: `pages-frontend.yml`
+* 백엔드 배포: `fly-backend.yml`
 
-⚠️ backend/, frontend/는 스크립트 실행 시 자동 생성됩니다.
+모두 ✅ 성공이어야 실제 서비스에 반영됨.
 
-⚠️ 스크립트 실행 시 GitHub 또는 Fly.io에 로그인되어 있지 않으면 자동으로 로그인 안내가 표시되며, 최초 1회 인증 후 계속 진행됩니다.
+### 4️⃣ 관리자 비밀번호 변경 방법
 
+**① BCrypt 해시 생성**
 
+```java
+new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder()
+    .encode("새 비밀번호");
+```
 
+출력된 해시값 복사.
 
-***사용 방법**
+**② Fly 환경변수 교체**
 
-0️⃣ 사전 준비
+```bash
+fly secrets set ADMIN_PASSWORD_HASH='생성된_해시값' --app <FLY_APP>
+```
 
-GitHub 계정
+필요 시:
 
-Fly.io 계정 (무료)
+```bash
+fly secrets set JWT_SECRET='기존값' --app <FLY_APP>
+```
 
-WSL 또는 Linux/macOS 환경
+→ 설정 즉시 자동 재배포됨.
 
+**③ 로그인 테스트**
 
-1️⃣ 템플릿 clone
+```bash
+curl -X POST https://<FLY_APP>.fly.dev/api/admin/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"password":"새 비밀번호"}'
+```
 
-git clone https://github.com/<owner>/bd-home-template.git
+* `200 + accessToken` → 성공
+* `401` → 해시 불일치
 
-cd bd-home-template
+### ⚠️ 운영 시 주의사항
 
-
-2️⃣ 스크립트 실행 권한 부여
-
-chmod +x scripts/*.sh
-
-
-3️⃣ 운영 레포 / 앱 이름 지정 후 실행
-
-export OPS_REPO="bd-home-<깃허브 아이디나 원하는 단어..>"
-
-export FLY_APP="bd-homepage-<위와 동일>"
-
-./scripts/bootstrap_owner.sh
-
-
-4️⃣ 배포 확인
-
-GitHub Actions 탭에서 모두 초록 표시(✅) 인지 확인
-
-⚠️ 만일 fly-backend.yml은 초록 표시 뜨는데 pages-frontend.yml만 에러 날 경우 pages 설정 문제!
-
-settings -> pages -> Build and deployment -> Source를 Github Actions로 변경 
-
-이 경우 90% 문제 해결됨
-
-
-
-***배포 결과물**
-
-스크립트 실행 후 아래 두 개가 자동으로 생성됩니다.
-
-1️⃣ 프론트엔드 (GitHub Pages)
-
-URL 예시: https://<github-id>.github.io/<repo-name>/
-
-2️⃣ 백엔드 (Fly.io)
-
-Health Check 엔드포인트: https://<fly-app-name>.fly.dev/api/health
-
-
-
-
-***Dev Stack **
-
-Backend: Spring Boot + Fly.io
-
-Frontend: HTML / JS + GitHub Pages
-
-CI/CD: GitHub Actions
+* GitHub Actions 실패 시 배포 반영 안 됨
+* Secrets 값은 Git에 커밋하지 말 것
+* Fly 로그 확인: `fly logs --app <FLY_APP>`
+  
+### 📌 서비스 주소
+* 홈페이지: `https://dswu-backdoor.github.io/`
+* 백엔드 Health Check: `https://<FLY_APP>.fly.dev/api/health`
