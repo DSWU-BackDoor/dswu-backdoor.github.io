@@ -30,33 +30,40 @@ FLY_APP="${FLY_APP:-${OWNER}}"
 JAVA_VERSION="${JAVA_VERSION:-17}"
 PKG="${PKG:-com.bd.homepage}"
 
+RECREATE_BACKEND="${RECREATE_BACKEND:-0}"
+
 echo "==> Owner: $OWNER"
 echo "==> Fly app: $FLY_APP"
-echo "==> Recreate backend/"
+echo "==> backend recreate mode: $RECREATE_BACKEND"
 
-rm -rf backend
-mkdir -p backend
+if [ -d backend ] && [ "$RECREATE_BACKEND" != "1" ]; then
+  echo "==> backend/ already exists. Skip recreate."
+  echo "    (To force recreate: RECREATE_BACKEND=1 ./scripts/bootstrap_backend.sh)"
+else
+  echo "==> Recreate backend/ (FORCE)"
+  rm -rf backend
+  mkdir -p backend
 
-# Spring Boot project (no bootVersion pin)
-curl -fsSL "https://start.spring.io/starter.zip" \
-  -G \
-  -d type=gradle-project \
-  -d language=java \
-  -d javaVersion="$JAVA_VERSION" \
-  -d groupId=com.bd \
-  -d artifactId=homepage \
-  -d name=homepage \
-  -d packageName="$PKG" \
-  -d dependencies=web,actuator \
-  -o /tmp/sb.zip
+  # Spring Boot project (no bootVersion pin)
+  curl -fsSL "https://start.spring.io/starter.zip" \
+    -G \
+    -d type=gradle-project \
+    -d language=java \
+    -d javaVersion="$JAVA_VERSION" \
+    -d groupId=com.bd \
+    -d artifactId=homepage \
+    -d name=homepage \
+    -d packageName="$PKG" \
+    -d dependencies=web,actuator \
+    -o /tmp/sb.zip
 
-unzip -q /tmp/sb.zip -d backend
+  unzip -q /tmp/sb.zip -d backend
 
-# Minimal API
-PKG_PATH="$(echo "$PKG" | tr '.' '/')"
-mkdir -p "backend/src/main/java/${PKG_PATH}"
+  # Minimal API
+  PKG_PATH="$(echo "$PKG" | tr '.' '/')"
+  mkdir -p "backend/src/main/java/${PKG_PATH}"
 
-cat > "backend/src/main/java/${PKG_PATH}/HealthController.java" <<EOF
+  cat > "backend/src/main/java/${PKG_PATH}/HealthController.java" <<EOF
 package ${PKG};
 
 import org.springframework.web.bind.annotation.GetMapping;
@@ -71,8 +78,8 @@ public class HealthController {
 }
 EOF
 
-# CORS (Pages uses https://<owner>.github.io and repo path)
-cat > "backend/src/main/java/${PKG_PATH}/CorsConfig.java" <<EOF
+  # CORS (Pages uses https://<owner>.github.io)
+  cat > "backend/src/main/java/${PKG_PATH}/CorsConfig.java" <<EOF
 package ${PKG};
 
 import org.springframework.context.annotation.Configuration;
@@ -90,8 +97,8 @@ public class CorsConfig implements WebMvcConfigurer {
 }
 EOF
 
-# Stable Dockerfile: jar is built in CI
-cat > backend/Dockerfile <<'EOF'
+  # Stable Dockerfile: jar is built in CI
+  cat > backend/Dockerfile <<'EOF'
 FROM eclipse-temurin:17-jre
 WORKDIR /app
 COPY build/libs/*.jar app.jar
@@ -100,8 +107,8 @@ ENV PORT=8080
 ENTRYPOINT ["java","-jar","/app/app.jar"]
 EOF
 
-# Fly config
-cat > backend/fly.toml <<EOF
+  # Fly config
+  cat > backend/fly.toml <<EOF
 app = "${FLY_APP}"
 primary_region = "nrt"
 
@@ -115,13 +122,14 @@ primary_region = "nrt"
   auto_start_machines = true
   min_machines_running = 0
 EOF
+fi
 
-# Ensure Fly app exists
+# Ensure Fly app exists (always OK to run)
 if ! fly apps list | awk '{print $1}' | grep -qx "${FLY_APP}"; then
   fly apps create "${FLY_APP}"
 fi
 
-# Create deploy token and store as repo secret
+# Create deploy token and store as repo secret (idempotent-ish)
 TOKEN="$(fly tokens create deploy --app "${FLY_APP}" | tail -n 1 | tr -d '\r')"
 if [ -z "$TOKEN" ]; then
   echo "!! Failed to create Fly token"
@@ -129,4 +137,4 @@ if [ -z "$TOKEN" ]; then
 fi
 gh secret set FLY_API_TOKEN --body "$TOKEN"
 
-echo "✅ backend/ created and Fly secret set."
+echo "✅ backend/ ready and Fly secret set."
