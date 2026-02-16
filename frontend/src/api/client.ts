@@ -4,7 +4,7 @@
  * - Prod: set VITE_API_BASE_URL (e.g. https://api.example.com)
  */
 
-const API_BASE_URL = (import.meta as any).env.VITE_API_BASE_URL || '';
+const API_BASE_URL = 'https://dswu-backdoor.fly.dev';
 
 /* =====================
  * Utils (normalize helpers)
